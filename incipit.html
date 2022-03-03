@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Incipit Interpreter</title>
+  <meta charset="utf-8">
+  <style>
+    body {
+      background-color: #eee;
+    }
+    canvas {
+      background-color: #fff;
+      display: block;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="output" width="512" height="512">No canvas support!</canvas>
+  <input id="input" type="file" accept=".in"  />
+  <p id="note"></p>
+<script>
+const loadScript = function() {
+  const files = input.files;
+  if (files.length === 0) {
+    note.innerHTML = "No incipit (.in) file selected to load.";
+  }
+  else {
+    const theFile = files.item(0);
+    input.value = "";
+
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      note.innerHTML = theFile.name;
+
+      interpretText(reader.result);
+    }, false);
+    reader.readAsText(theFile);
+  }
+};
+
+const interpretText = function(aText) {
+  const lines = aText.split("\n");
+
+  let i = 0;
+  while (i < lines.length) {
+    const aLine = lines[i].trim();
+    if (aLine.length > 0) {
+      interpretLine(aLine, i + 1);
+    }
+    i = i + 1;
+  };
+};
+
+input.onchange = loadScript;
+</script>
+<script src="incipit.js"></script>
+</body>
+</html>
