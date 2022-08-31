@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--  Looking at the source of websites is a great habit to
+      get into! The HTML and CSS for this page is relatively
+      straightforward. More interesting is the JavaScript
+      used for the animation system. Take a look if you're
+      interested!
+-->
+  <title>Turtle Graphics</title>
+  <meta charset="utf-8">
+  <style>
+    /*  This is a set of basic CSS rules for the page. Since
+        the page isn't the interesting part, there aren't many
+        rules! Note that the commenting style differs from
+        HTML.
+    */
+    body {    /* Make the background a light gray. */
+      background-color: #eee;
+    }
+
+    canvas {  /* Make the canvas white and centered. */
+      background-color: #fff;
+      display: block;
+      margin: 0 auto;
+    }
+
+    div {     /* Ensure the informational text aligns with the canvas */
+      margin: 0 auto;
+      width: 512px;
+    }
+  </style>
+</head>
+<body>
+  <!--  The trick here is that we're using two canvases. The 
+        first isn't visible and contains the drawn image.
+        The second contains the turtle cursor. Later, we'll 
+        draw the image on the turtle canvas and then draw
+        the turtle cursor over it.
+  -->
+  <canvas id="imageCanvas" width="256" height="256" style="display: none;"></canvas>
+  <canvas id="turtleCanvas" width="256" height="256">No canvas support!</canvas>
+  <!--  We'll add text containing the turtle cursor's x, y
+        position and current heading inside of this div tag.
+  -->
+  <div id="coordinates"></div>
+  <!--  Everything inside the <script></script> tags is the
+        turtle graphics implementation.
+  -->
+  <script>
+// Turtle graphics /////////////////////////////////////////
+const turtle = (function() {
+// configuration ///////////////////////////////////////////
+  // The following determines the maximum x and y values the
+  // canvas displays, with the displayed canvas using scale
+  // to make it appear larger.
+  const canvasSize = 256;
+  const scale = 2;
+  const dpr = window.devicePixelRatio || 1;
+
+
+  // The fill we'll use for the turtle cursor, a 
+  // semi-transparent white.
+  const cursorFill = "rgba(255, 255, 255, .2)";
+
+  // Similarly, we'll use a fully opaque black for the cursor
+  // itself.
+  const cursorStroke = "black";
+
+  // And we'll use an opaque black for the executing 
+  // instruction.
+  const cursorText = "black";
+
+  // When the animation speed is larger than this value,
+  // we stop displaying the currently executing instruction.
+  const animationLabelThreshold = 50;
+
+  const animationStepSpeed = 100;
+  const animationTurnSpeed = 10;
+
+// math constants //////////////////////////////////////////
+  // We'll use tau to simplify our math later on. See
+  // https://tauday.com for more information on using Tau.
+  const tau = Math.PI * 2;
+
+// support data ////////////////////////////////////////////
+  // Used to draw the image.
+  const imageContext = imageCanvas.getContext('2d');
+
+// support functions ///////////////////////////////////////
+  // We'll use some functions to prepare to draw and to
+  // make our lives easier. You shouldn't need to call these
+  // directly, and so they won't be part of the public
+  // interface.
+
+  // Clamp means to ensure that a value (x) is between
+  // two values. If x is smaller than x0 or larger than x1,
+  // then we use x0 or x1 instead as appropriate.
+  const clamp = function(x, x0, x1) {
+    return Math.max(Math.min(x, x1), x0);
+  };
+
+  // This clears the canvas so we effectively have a clean
+  // drawing surface.
+  const clearContext = function(theContext) {
+    theContext.save();
+    theContext.setTransform(1, 0, 0, 1, 0, 0);
+    theContext.clearRect(0, 0, theContext.canvas.width,
+      theContext.canvas.height);
+    theContext.restore();
+  };
+
+  // Handles updating the visible canvas. How? First,
+  // it clears the canvas (just like erasing everything
+  // from a piece of paper) and then copying the image you've
+  // created onto the canvas. We then draw the turtle cursor
+  // and associated information if it's visible.
+  const draw = function() {
+    clearContext(cursor.context);
+    cursor.context.drawImage(imageCanvas, 0, 0,
+      canvasSize, canvasSize);
+    if (cursor.isVisible) {
+      const c = cursor.context;
+      const x = cursor.pos[0];
+      const y = cursor.pos[1];
+      const s = cursor.shape;
+
+      c.save();
+      c.translate(x, y);
+      c.rotate(-cursor.radians);
+      c.translate(-x, -y);
+
+      // Draw the cursor.
+      c.beginPath();
+      if (s.length >= 1) {
+        c.moveTo(s[0] + x, s[1] + y);
+      }
+      for (let i = 2; i < s.length; i += 2) {
+        c.lineTo(s[i] + x, s[i + 1] + y);
+      }
+      c.closePath();
+      c.fillStyle = cursorFill;
+      c.strokeStyle = cursorStroke;
+      c.fill();
+      c.stroke();
+
+      // Draw the pen. The radius of the pen determines
+      // the circle's radius. Similarly, a "down" pen
+      // results in a filled circle, while an "up" pen
+      // is a hollow circle. We'll use the current pen
+      // color to draw the circle regardless.
+      const r = cursor.pen.radius;
+      c.beginPath();
+      c.ellipse(x, y, r, r, 0, 0, tau);
+      c.closePath();
+      c.fillStyle = cursor.pen.color;
+      c.strokeStyle = cursor.pen.color;
+      if (cursor.pen.isDown) {
+        c.fill();
+      }
+      else {
+        c.stroke();
+      }
+
+      // Draw the executing command
+      c.fillStyle = cursorText;
+      c.translate(x, y);
+      c.rotate(cursor.radians);
+      c.translate(-x, -y);
+      const msg = cursor.message;
+      c.fillText(msg[0], x - msg[1], y - msg[2]);
+
+      c.restore();
+
+      let deg = (cursor.radians * 360 / tau).toFixed(4);
+      deg = deg < 0 ? deg + 360 : deg;
+      deg = deg >= 360 ? deg - 360 : deg;
+      coordinates.innerText = `x=${x.toFixed(4)} y=${y.toFixed(4)} degree=${deg}°`;
+    }
+  };
+
+  // We need our canvas to handle retina displays
+  // correctly and to also support our scaling
+  // constant up in the configuration. This lets us
+  // have a 256×256 canvas displayed as a 512×512
+  // canvas and still be sharp. 
+  const scaleCanvas = function(c) {
+    c.width = scale * canvasSize * dpr;
+    c.height = scale * canvasSize * dpr;
+
+    c.style.width = `${scale * canvasSize}px`;
+    c.style.height = `${scale * canvasSize}px`;
+
+    const ctx = c.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+
+    ctx.scale(scale * dpr, scale * dpr);
+  };
+
+  // The cursor displays a message, usually the executing
+  // instruction, while visible and animating. This changes
+  // the displayed message and calculates the offset required
+  // to center it above the cursor.
+  const setMessage = function(s) {
+    const metrics = cursor.context.measureText(s);
+    cursor.message = [
+      s, 
+      metrics.width / 2,
+      (metrics.actualBoundingBoxAscent
+        + metrics.actualBoundingBoxDescent) * 2
+    ];
+  };
+
+// animation ///////////////////////////////////////////////
+// The animation system consists of a queue of things to do,
+// whether displaying a label or moving forward.
+  let animations = [];
+  let isAnimationEnabled = true;
+  let isAnimating = false;
+  let t0 = undefined;
+  let animationSpeed = 1;
+  let duration0 = undefined;
+
+  // Calls the functions stored in the animations array,
+  // defined above. When an animation is completed, it's
+  // removed from the array.
+  const animate = function(t1) {
+    isAnimating = true;
+
+    if (animations.length) {
+      const a0 = animations[0];
+
+      const dtSec = clamp((t1 - t0) * animationSpeed / 1000,
+        0, 1);
+      t0 = t1;
+
+      if (!a0.func(dtSec, a0.data)) { animations.shift(); }
+      draw();
+      requestAnimationFrame(animate);
+    }
+    else {
+      isAnimating = false;
+      setMessage("");
+      draw();
+      const duration = (performance.now() - duration0) / 1000;
+      console.log(`Animations required ${duration} sec.`);
+    }
+  };
+
+  // Toggles whether or not animations are enabled (true)
+  // or disabled (false).
+  const animateAnimationEnable = function(dt, data) {
+    isAnimationEnabled = data[0];
+    if (!data[0]) {
+      animations.shift();
+      for (const aI of animations) {
+        aI.func(1, aI.data);
+      }
+      animations = [];
+    }
+    return false;
+  };
+
+  // Clears the canvas without moving the cursor or,
+  // importantly, resetting the animation queue. 
+  const animateClear = function(dt, data) {
+    clearContext(imageContext);
+    draw();
+    return false;
+  };
+
+  // Toggles whether or not the cursor is visible (true) or
+  // hidden (false).
+  const animateCursor = function(dt, data) {
+    cursor.isVisible = data[0];
+    coordinates.style.visibility = data[0] ? "visible" : "hidden";
+    return false;
+  };
+
+  // Updates the text displayed above the turtle cursor.
+  // Used to display the currently executing instruction.
+  const animateLabel = function(dt, data) {
+    setMessage(data);
+    if (isAnimationEnabled) {
+      animations.shift();
+
+      if (animations.length) {
+        const a0 = animations[0];
+        return a0.func(dt, a0.data);
+      }
+    }
+    return false;
+  };
+
+  // Creates a new image. Unlike animateClear(), this also
+  // clears the animation queue and resets the cursor data
+  // to its default state.
+  const animateNewImage = function(dt, data) {
+    initialize();
+    animateClear();
+    draw();
+    return false;
+  };
+
+  // Instantly change the heading of the turtle cursor. 
+  // Note that 0° is straight down, and 90° faces right.
+  const animateFace = function(dt, data) {
+    cursor.radians = data[0];
+    return false;
+  };
+
+  // Move the turtle cursor forward along its current 
+  // heading (in radians). This also draws on the image
+  // canvas if the pen is down.
+  const animateForward = function(dt, data) {
+    dt *= animationStepSpeed;
+    const image = imageContext;
+    const dAbs = Math.abs(data[0]);
+    const step = clamp(Math.sign(data[0]) * dt, -dAbs, dAbs);
+
+    const x0 = cursor.pos[0];
+    const y0 = cursor.pos[1];
+    const r = cursor.radians;
+
+    cursor.pos[0] = x0 + Math.sin(r) * step;
+    const x1 = cursor.pos[0];
+
+    cursor.pos[1] = y0 + Math.cos(r) * step;
+    const y1 = cursor.pos[1];
+
+    if (cursor.pen.isDown) {
+      image.beginPath();
+      image.moveTo(x0, y0);
+      image.lineTo(x1, y1);
+      image.closePath();
+      image.stroke();
+    }
+
+    data[0] -= step;
+
+    return data[0] !== 0;
+  };
+
+  // Move the turtle cursor instantly to another location.
+  // Since it's effectively teleporting, nothing is drawn.
+  const animateGoTo = function(dt, data) {
+    cursor.pos[0] = data[0];
+    cursor.pos[1] = data[1];
+
+    return false;
+  };
+
+  // Toggle whether the pen is down (true) or up (false).
+  const animatePen = function(dt, data) {
+    cursor.pen.isDown = data[0];
+    return false;
+  };
+
+  // Change the pen color, always using RGBA.
+  const animatePenColor = function(dt, data) {
+    cursor.pen.color = `rgba(${data[0]}, ${data[1]}, ${data[2]}, ${data[3]})`;
+    imageContext.strokeStyle = cursor.pen.color;
+    imageContext.fillStyle = cursor.pen.color;
+    return false;
+  };
+
+  // Turn the turtle cursor right by the specified number
+  // of degrees.
+  const animateTurnRight = function(dt, data) {
+    dt *= animationTurnSpeed;
+    const rAbs = Math.abs(data[0]);
+    const dr = clamp(Math.sign(data[0]) * dt, -rAbs, rAbs);
+    let r = cursor.radians + dr;
+    r = r >= tau ? r - tau : r;
+    r = r <= 0 ? r + tau : r;
+    cursor.radians = r;
+
+    data[0] -= dr;
+
+    return data[0] !== 0;
+  };
+
+  // Write a text message at the current cursor location.
+  const animateWrite = function(dt, data) {
+    const c = imageContext;
+    const x = cursor.pos[0];
+    const y = cursor.pos[1];
+    const r = cursor.radians;
+
+    c.save();
+    c.translate(x, y);
+    c.rotate(-r + Math.PI);
+    c.translate(-x, -y);
+
+    imageContext.fillText(data[0], x, y);
+
+    c.restore();
+    return false;
+  };
+
+  // Create an animation element and add it to the animations
+  // array.
+  const queueRaw = function(f, theData) {
+    const payload = {
+      func: f,
+      t: 0,
+      data: theData
+    };
+
+    animations.push(payload);
+
+    if (!isAnimating) {
+      t0 = performance.now();
+      duration0 = t0;
+      isAnimating = true;
+      requestAnimationFrame(animate);
+    }
+  };
+
+  // Based on whether or not we're animating and the
+  // animation speed, this will create and queue the labels 
+  // and the animation data…or just execute the instruction.
+  const queue = function(label, f, ...theData) {
+    if (isAnimationEnabled) {
+      if (animationSpeed < animationLabelThreshold) {
+        queueRaw(animateLabel, label);
+      }
+      queueRaw(f, theData);
+    }
+    else {
+      f(1, theData);
+      draw();
+    }
+  };
+
+// initialization //////////////////////////////////////////
+  // Prepares our cursor object and other state information,
+  // such as animations. We need this as a function so we
+  // can reset state without reloading the page.
+  const initialize = function() {
+    // Clear any existing animations.
+    animations = [];
+    isAnimationEnabled = true;
+    isAnimating = false;
+    animationSpeed = 1;
+
+    scaleCanvas(turtleCanvas);
+    scaleCanvas(imageCanvas);
+
+    cursor = {
+      context: turtleCanvas.getContext('2d'),
+      isVisible: true,
+      radians: tau * 0.5,
+      pen: {
+        color: "rgba(0, 0, 0, 1)",
+        isDown: true,
+        radius: 1
+      },
+      pos: [
+        turtleCanvas.width / (2 * scale * dpr), 
+        turtleCanvas.height / (2 * scale * dpr)
+      ],
+      shape: [
+        -5, -5,
+        0, 10,
+        5, -5
+      ]
+    };
+
+    imageContext.strokeStyle = cursor.pen.color;
+    imageContext.fillStyle = cursor.pen.color;
+
+    setMessage("");
+
+    coordinates.style.visibility = "visible";
+  };
+
+// turtle graphics /////////////////////////////////////////
+// We return an object containing the functions comprising
+// the turtle graphics API. That is, these are the functions
+// you'll be calling directly. Most simply queue the 
+// corresponding animation functions from above.
+// 
+// Note the Now suffix is used to indicate that the
+// command isn't animated and immediately takes effect.
+  return {
+    animationEnable: function() {
+      queue("animationEnable()", animateAnimationEnable, true);
+    },
+
+    animationDisable: function() {
+      queue("animationDisable()", animateAnimationEnable, false);
+    },
+
+    clear: function() {
+      queue("clear()", animateClear);
+    },
+
+    cursorHide: function() {
+      queue("cursorHide()", animateCursor, false); 
+    },
+
+    cursorShow: function() {
+      queue("cursorShow()", animateCursor, true); 
+    },
+
+    face: function(degrees) {
+      const d = Number.parseFloat(degrees);
+      if (Number.isFinite(d)) {
+        queue(`face(${d})`,
+          animateFace, 
+          d * tau / 360);
+      }
+      else {
+        throw new TypeError(`face() requires a number of degrees, not ${degrees}.`);
+      }
+    },
+
+    goTo: function(position) {
+      if (!position) throw new TypeError(`goTo() requires an [x, y] array or an x and y value.`);
+      const x = Number.parseFloat((typeof position === "object" && position[0]) || arguments[0]);
+      const y = Number.parseFloat(position[1] || arguments[1]);
+
+      if (!Number.isFinite(x)) {
+        throw new RangeError(`goTo() expected a number for x, not ${x}`);
+      }
+      if (!Number.isFinite(y)) {
+        throw new RangeError(`goTo() expected a number for y, not ${y}`);
+      }
+
+      queue(`goTo(${x}, ${y})`, animateGoTo, x, y);
+    },
+
+    moveForward: function(steps) {
+      const s = Number.parseFloat(steps);
+
+      if (Number.isFinite(s)) {
+        queue(`forward(${s});`,
+          animateForward,
+          steps);
+      }
+      else {
+        throw new TypeError(`forward() requires a number, not ${steps}.`);
+      }
+    },
+
+    newImage: function() {
+      queue("newImage()", animateNewImage);
+    },
+
+    penDown: function() {
+      queue("penDown()", animatePen, true);
+    },
+
+    penUp: function() {
+      queue("penUp()", animatePen, false);
+    },
+
+    // We only need to call this once to prepare the 
+    // turtle graphics system.
+    readyNow: function() {
+      initialize();
+      animateClear();
+      draw();
+      console.log("Ready.");
+    },
+
+    setPenColor: function(rgb) {
+      const errorUsage = "setPenColor() requires three or four numbers between 0 and 255 (inclusive) in an array or directly, not " + arguments;
+      const errorColor = " should be a number between 0 and 255 (inclusive), not ";
+
+      if (rgb === undefined) throw new TypeError(errorUsage);
+      const r = Number.parseInt((typeof rgb === "object" && rgb[0]) || arguments[0]);
+      const g = Number.parseInt(rgb[1] || arguments[1]);
+      const b = Number.parseInt(rgb[2] || arguments[2]); 
+      const a = Number.parseInt(rgb[3] || arguments[3] || 255);
+
+      if (r < 0 || r > 255 || !Number.isInteger(r)) {
+        throw new RangeError("Red" + errorColor + r);
+      }
+      if (g < 0 || g > 255 || !Number.isInteger(g)) {
+        throw new RangeError("Green" + errorColor + g);
+      }
+      if (b < 0 || b > 255 || !Number.isInteger(b)) {
+        throw new RangeError("Blue" + errorColor + b);
+      }
+      if (a < 0 || a > 255 || !Number.isInteger(a)) {
+        throw new RangeError("Alpha" + errorColor + a);
+      }
+
+      queue(`setPenColor(${r}, ${g}, ${b}, ${a})`,
+        animatePenColor, r, g, b, a / 255);
+    },
+
+    setSpeedNow: function(speed) {
+      const s = Number.parseFloat(speed);
+      if (Number.isFinite(s)) {
+        animationSpeed = clamp(s, .1, 1000);
+        console.log(`Animation speed set to ${animationSpeed}.`);
+      }
+      else {
+        throw new TypeError(`setSpeed() requires a number for speed, not ${speed}.`);
+      }
+    },
+
+    turnRight: function(degrees) {
+      const d = Number.parseFloat(degrees);
+      if (Number.isFinite(d)) {
+        queue(`turnRight(${d})`,
+          animateTurnRight, 
+          -d * tau / 360);
+      }
+      else {
+        throw new TypeError(`turnRight() requires a number of degrees, not ${degrees}.`);
+      }
+    },
+
+    write: function(msg) {
+      queue(`write(${msg})`, animateWrite, msg);
+    }
+  };
+}());
+
+turtle.readyNow();
+
+function testTurtle() {
+  turtle.animationEnable();
+  turtle.clear();
+  turtle.cursorHide();
+  turtle.cursorShow();
+  try { turtle.goTo(); } catch(e) { console.log(e); }
+  try { turtle.goTo("a", "b"); } catch(e) { console.log(e); }
+  try { turtle.goTo("64", "64"); } catch(e) { console.log(e); }
+  try { turtle.goTo(["64", "64"]); } catch(e) { console.log(e); }
+  turtle.moveForward(1);
+  turtle.moveForward(0);
+  turtle.moveForward(-1);
+  try { turtle.moveForward("1"); } catch(e) { console.log(e); }
+  
+  try { turtle.moveForward("a"); } catch(e) { console.log(e); }
+  turtle.penDown();
+  turtle.penUp();
+  
+  try { turtle.setPenColor(); } catch(e) { console.log(e); }
+  try { turtle.setPenColor("a"); } catch(e) { console.log(e); }
+  try { turtle.setPenColor("a", "b"); } catch(e) { console.log(e); }
+  try { turtle.setPenColor("a", "b", "c"); } catch(e) { console.log(e); }
+  try { turtle.setPenColor("a", "b", "c", "d"); } catch(e) { console.log(e); }
+
+  try { turtle.setPenColor("0", "0", "-256"); } catch(e) { console.log(e); }
+  try { turtle.setPenColor("0", "-256", "0"); } catch(e) { console.log(e); }
+  try { turtle.setPenColor("-256", "0", "0"); } catch(e) { console.log(e); }
+  try { turtle.setPenColor("0", "0", "256"); } catch(e) { console.log(e); }
+  try { turtle.setPenColor("0", "256", "0"); } catch(e) { console.log(e); }
+  try { turtle.setPenColor("256", "0", "0"); } catch(e) { console.log(e); }
+
+  try { turtle.setPenColor("0", "0", "0"); } catch(e) { console.log(e); }
+  try { turtle.setPenColor("0", "0", "0", "256"); } catch(e) { console.log(e); }
+  try { turtle.setPenColor("0", "0", "0", "255"); } catch(e) { console.log(e); }
+  try { turtle.setPenColor(["0", "0", "0", "256"]); } catch(e) { console.log(e); }
+  try { turtle.setPenColor(["0", "0", "0", "255"]); } catch(e) { console.log(e); }
+
+  try { turtle.setSpeedNow(); } catch(e) { console.log(e); }
+  try { turtle.setSpeedNow("a"); } catch(e) { console.log(e); }
+  turtle.setSpeedNow(1);
+
+  try { turtle.turnRight(); } catch(e) { console.log(e); }
+  try { turtle.turnRight("a"); } catch(e) { console.log(e); }
+  try { turtle.turnRight("90"); } catch(e) { console.log(e); }
+
+  turtle.animationDisable();
+
+  turtle.clear();
+}
+
+function testSquare(speed, n) {
+  turtle.setSpeedNow(speed);
+  for (let r = 0; r < n; r++) {
+    turtle.turnRight(90);
+    turtle.moveForward(n);
+    turtle.moveForward(-n);
+    turtle.turnRight(-90);
+    turtle.moveForward(1);
+  }
+  turtle.moveForward(-n);
+}
+  </script>
+</body>
+</html>
