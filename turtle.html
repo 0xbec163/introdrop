@@ -535,12 +535,12 @@ const turtle = (function() {
       const s = Number.parseFloat(steps);
 
       if (Number.isFinite(s)) {
-        queue(`forward(${s});`,
+        queue(`moveForward(${s});`,
           animateForward,
           steps);
       }
       else {
-        throw new TypeError(`forward() requires a number, not ${steps}.`);
+        throw new TypeError(`moveForward() requires a number, not ${steps}.`);
       }
     },
 
