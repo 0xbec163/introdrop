@@ -622,68 +622,6 @@ const turtle = (function() {
 }());
 
 turtle.readyNow();
-
-function testTurtle() {
-  turtle.animationEnable();
-  turtle.clear();
-  turtle.cursorHide();
-  turtle.cursorShow();
-  try { turtle.goTo(); } catch(e) { console.log(e); }
-  try { turtle.goTo("a", "b"); } catch(e) { console.log(e); }
-  try { turtle.goTo("64", "64"); } catch(e) { console.log(e); }
-  try { turtle.goTo(["64", "64"]); } catch(e) { console.log(e); }
-  turtle.moveForward(1);
-  turtle.moveForward(0);
-  turtle.moveForward(-1);
-  try { turtle.moveForward("1"); } catch(e) { console.log(e); }
-  
-  try { turtle.moveForward("a"); } catch(e) { console.log(e); }
-  turtle.penDown();
-  turtle.penUp();
-  
-  try { turtle.setPenColor(); } catch(e) { console.log(e); }
-  try { turtle.setPenColor("a"); } catch(e) { console.log(e); }
-  try { turtle.setPenColor("a", "b"); } catch(e) { console.log(e); }
-  try { turtle.setPenColor("a", "b", "c"); } catch(e) { console.log(e); }
-  try { turtle.setPenColor("a", "b", "c", "d"); } catch(e) { console.log(e); }
-
-  try { turtle.setPenColor("0", "0", "-256"); } catch(e) { console.log(e); }
-  try { turtle.setPenColor("0", "-256", "0"); } catch(e) { console.log(e); }
-  try { turtle.setPenColor("-256", "0", "0"); } catch(e) { console.log(e); }
-  try { turtle.setPenColor("0", "0", "256"); } catch(e) { console.log(e); }
-  try { turtle.setPenColor("0", "256", "0"); } catch(e) { console.log(e); }
-  try { turtle.setPenColor("256", "0", "0"); } catch(e) { console.log(e); }
-
-  try { turtle.setPenColor("0", "0", "0"); } catch(e) { console.log(e); }
-  try { turtle.setPenColor("0", "0", "0", "256"); } catch(e) { console.log(e); }
-  try { turtle.setPenColor("0", "0", "0", "255"); } catch(e) { console.log(e); }
-  try { turtle.setPenColor(["0", "0", "0", "256"]); } catch(e) { console.log(e); }
-  try { turtle.setPenColor(["0", "0", "0", "255"]); } catch(e) { console.log(e); }
-
-  try { turtle.setSpeedNow(); } catch(e) { console.log(e); }
-  try { turtle.setSpeedNow("a"); } catch(e) { console.log(e); }
-  turtle.setSpeedNow(1);
-
-  try { turtle.turnRight(); } catch(e) { console.log(e); }
-  try { turtle.turnRight("a"); } catch(e) { console.log(e); }
-  try { turtle.turnRight("90"); } catch(e) { console.log(e); }
-
-  turtle.animationDisable();
-
-  turtle.clear();
-}
-
-function testSquare(speed, n) {
-  turtle.setSpeedNow(speed);
-  for (let r = 0; r < n; r++) {
-    turtle.turnRight(90);
-    turtle.moveForward(n);
-    turtle.moveForward(-n);
-    turtle.turnRight(-90);
-    turtle.moveForward(1);
-  }
-  turtle.moveForward(-n);
-}
   </script>
 </body>
 </html>
