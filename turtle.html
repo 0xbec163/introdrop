@@ -496,14 +496,6 @@ const turtle = (function() {
       queue("clear()", animateClear);
     },
 
-    cursorHide: function() {
-      queue("cursorHide()", animateCursor, false); 
-    },
-
-    cursorShow: function() {
-      queue("cursorShow()", animateCursor, true); 
-    },
-
     face: function(degrees) {
       const d = Number.parseFloat(degrees);
       if (Number.isFinite(d)) {
@@ -529,6 +521,10 @@ const turtle = (function() {
       }
 
       queue(`goTo(${x}, ${y})`, animateGoTo, x, y);
+    },
+
+    hide: function() {
+      queue("hide()", animateCursor, false); 
     },
 
     moveForward: function(steps) {
@@ -601,6 +597,10 @@ const turtle = (function() {
       else {
         throw new TypeError(`setSpeed() requires a number for speed, not ${speed}.`);
       }
+    },
+
+    show: function() {
+      queue("show()", animateCursor, true); 
     },
 
     turnRight: function(degrees) {
