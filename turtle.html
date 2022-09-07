@@ -510,8 +510,8 @@ const turtle = (function() {
 
     goTo: function(position) {
       if (!position) throw new TypeError(`goTo() requires an [x, y] array or an x and y value.`);
-      const x = Number.parseFloat((typeof position === "object" && position[0]) || arguments[0]);
-      const y = Number.parseFloat(position[1] || arguments[1]);
+      const x = Number.parseFloat((typeof position === "object" && position[0]) ?? arguments[0]);
+      const y = Number.parseFloat(position[1] ?? arguments[1]);
 
       if (!Number.isFinite(x)) {
         throw new RangeError(`goTo() expected a number for x, not ${x}`);
@@ -566,10 +566,10 @@ const turtle = (function() {
       const errorColor = " should be a number between 0 and 255 (inclusive), not ";
 
       if (rgb === undefined) throw new TypeError(errorUsage);
-      const r = Number.parseInt((typeof rgb === "object" && rgb[0]) || arguments[0]);
-      const g = Number.parseInt(rgb[1] || arguments[1]);
-      const b = Number.parseInt(rgb[2] || arguments[2]); 
-      const a = Number.parseInt(rgb[3] || arguments[3] || 255);
+      const r = Number.parseInt((typeof rgb === "object" && rgb[0]) ?? arguments[0]);
+      const g = Number.parseInt(rgb[1] ?? arguments[1]);
+      const b = Number.parseInt(rgb[2] ?? arguments[2]); 
+      const a = Number.parseInt(rgb[3] ?? arguments[3] ?? 255);
 
       if (r < 0 || r > 255 || !Number.isInteger(r)) {
         throw new RangeError("Red" + errorColor + r);
