@@ -344,8 +344,8 @@ const turtle = (function() {
   // Move the turtle cursor instantly to another location.
   // Since it's effectively teleporting, nothing is drawn.
   const animateGoTo = function(dt, data) {
-    cursor.pos[0] = data[0];
-    cursor.pos[1] = data[1];
+    cursor.pos[0] = data[0] ?? cursor.pos[0];
+    cursor.pos[1] = data[1] ?? cursor.pos[1];
 
     return false;
   };
@@ -524,6 +524,30 @@ const turtle = (function() {
       }
 
       queue(`goTo(${x}, ${y})`, animateGoTo, x, y);
+    },
+
+    goToX: function(x) {
+      if (x === undefined) {
+        throw new TypeError(`goToX() requires a number, not ${x}.`);
+      }
+      const n = Number.parseFloat(x);
+      if (!Number.isFinite(n)) {
+        throw new TypeError(`goToX() expected a number, not ${x}.`);
+      }
+
+      queue(`goToX(${n})`, animateGoTo, n, undefined);
+    },
+
+    goToY: function(y) {
+      if (y === undefined) {
+        throw new TypeError(`goToY() requires a number, not ${y}.`);
+      }
+      const n = Number.parseFloat(y);
+      if (!Number.isFinite(n)) {
+        throw new TypeError(`goToY() expected a number, not ${y}.`);
+      }
+
+      queue(`goToY(${n})`, animateGoTo, undefined, n);
     },
 
     hide: function() {
