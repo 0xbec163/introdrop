@@ -264,7 +264,8 @@ const turtle = (function() {
     if (!data[0]) {
       animations.shift();
       for (const aI of animations) {
-        aI.func(1, aI.data);
+        // Hack for now until we change to generators.
+        aI.func(999999, aI.data);
       }
       animations = [];
     }
@@ -327,7 +328,6 @@ const turtle = (function() {
     const image = imageContext;
     const dAbs = Math.abs(data[0]);
     const step = clamp(Math.sign(data[0]) * dt, -dAbs, dAbs);
-
     const x0 = cursor.pos[0];
     const y0 = cursor.pos[1];
     const r = cursor.radians;
@@ -438,7 +438,8 @@ const turtle = (function() {
       queueRaw(f, theData);
     }
     else {
-      f(1, theData);
+      // Again, a hack until we use generators.
+      f(999999, theData);
       draw();
     }
   };
