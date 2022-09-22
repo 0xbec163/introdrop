@@ -54,6 +54,10 @@
         position and current heading inside of this div tag.
   -->
   <div id="coordinates"></div>
+  <!--  This will hold the mouse coordinates over the canvas
+        for now.
+  -->
+  <div id="mouseCoordinates"></div>
   <!--  Everything inside the <script></script> tags is the
         turtle graphics implementation.
   -->
@@ -67,7 +71,6 @@ const turtle = (function() {
   const canvasSize = 256;
   const scale = 2;
   const dpr = window.devicePixelRatio || 1;
-
 
   // The fill we'll use for the turtle cursor, a 
   // semi-transparent white.
@@ -96,6 +99,23 @@ const turtle = (function() {
 // support data ////////////////////////////////////////////
   // Used to draw the image.
   const imageContext = imageCanvas.getContext('2d');
+
+// mouse coordinate data////////////////////////////////////
+  // We need to assign event handlers to the canvas so
+  // we can display the mouse coordinates. Need to do
+  // so only once, though.
+  const updateMouseCoordinates = function(e) {
+    const c = turtleCanvas;
+    const x = (e.clientX - c.offsetLeft) / scale;
+    const y = (e.clientY - c.offsetTop) / scale;
+
+    mouseCoordinates.innerText = `Mouse: x=${x} y=${y}`;
+  };
+
+  turtleCanvas.addEventListener("mouseenter", updateMouseCoordinates);
+
+  turtleCanvas.addEventListener("mousemove",
+    updateMouseCoordinates);
 
 // support functions ///////////////////////////////////////
   // We'll use some functions to prepare to draw and to
