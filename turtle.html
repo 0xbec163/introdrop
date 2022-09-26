@@ -58,6 +58,12 @@
         for now.
   -->
   <div id="mouseCoordinates"></div>
+  <!--  Let's also add a link to support downloading the 
+        created artwork.
+  -->
+  <div>
+    <a id="download" download="tg.png"><button>Download Image</button></a>
+  </div>
   <!--  Everything inside the <script></script> tags is the
         turtle graphics implementation.
   -->
@@ -117,7 +123,7 @@ const turtle = (function() {
   turtleCanvas.addEventListener("mousemove",
     updateMouseCoordinates);
 
-// support functions ///////////////////////////////////////
+// turtle graphics support /////////////////////////////////
   // We'll use some functions to prepare to draw and to
   // make our lives easier. You shouldn't need to call these
   // directly, and so they won't be part of the public
@@ -207,6 +213,10 @@ const turtle = (function() {
       deg = deg >= 360 ? deg - 360 : deg;
       coordinates.innerText = `x=${x.toFixed(4)} y=${y.toFixed(4)} degree=${deg}°`;
     }
+
+    // Update our download link
+    download.download = `TurtleGraphics.png`;
+    download.href = turtleCanvas.toDataURL();
   };
 
   // We need our canvas to handle retina displays
