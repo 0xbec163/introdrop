@@ -287,17 +287,33 @@ const turtle = (function() {
     }
   };
 
+  // Helper function to kick off the animation process.
+  const animateStart = function() {
+    t0 = performance.now();
+    duration0 = t0;
+    isAnimating = true;
+    requestAnimationFrame(animate);
+  };
+
   // Toggles whether or not animations are enabled (true)
   // or disabled (false).
   const animateAnimationEnable = function(dt, data) {
     isAnimationEnabled = data[0];
     if (!data[0]) {
+      // Disabling animations means we need to start 
+      // executing all outstanading animations. However, one
+      // of the animations we execute might be to enable
+      // animations!
       animations.shift();
-      for (const aI of animations) {
-        // Hack for now until we change to generators.
-        aI.func(999999, aI.data);
+
+      while (animations.length && !isAnimationEnabled) {
+        const a = animations.shift();
+        a.func(999999, a.data);
       }
-      animations = [];
+    }
+    else {
+      // Enabled, so start animating again
+      animateStart();
     }
     return false;
   };
@@ -450,10 +466,7 @@ const turtle = (function() {
     animations.push(payload);
 
     if (!isAnimating) {
-      t0 = performance.now();
-      duration0 = t0;
-      isAnimating = true;
-      requestAnimationFrame(animate);
+      animateStart();
     }
   };
 
